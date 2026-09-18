@@ -1,0 +1,69 @@
+>
+      <a class="button primary" href="${lessonHref(c.n)}">Enter this room</a>
+    </div></article>`;
+}
+function renderRooms(){ if($('#roomGrid')) $('#roomGrid').innerHTML=chapters.map(roomCard).join(''); }
+function renderHomeRooms(){ if($('#homeRoomGrid')) $('#homeRoomGrid').innerHTML=chapters.slice(0,3).map(roomCard).join(''); }
+
+function initLesson(){
+  if(page!=='lesson') return;
+  const n=Number(document.body.dataset.chapter); const c=chapters[n-1]; if(!c) return;
+  state.lastChapter=n; save();
+  document.title=`${c.title} — Hen & Bea's Music House`;
+  $('#lessonStatus').textContent=statusFor(n);
+  $('#lessonContent').innerHTML=`
+    <div class="lesson-hero">
+      <div class="lesson-art"><img src="${base}assets/art/${c.art}" alt="Chapter ${n} story illustration"></div>
+      <div class="lesson-intro"><span class="chapter-label">Room ${n} · Grade 1</span><h1 class="lesson-title">${c.icon} ${c.title}</h1><p>${c.story}</p><div class="concept-box">Musical idea: ${c.concept}</div></div>
+    </div>
+    <div class="mode-tabs" role="tablist" aria-label="Lesson sections">
+      ${['Discover','Hear','Play','Practise','Create'].map((m,i)=>`<button class="mode-tab ${i===0?'active':''}" data-mode="${m.toLowerCase()}" type="button">${m}</button>`).join('')}
+    </div>
+    <div class="mode-panel" id="modePanel"></div>
+    <div class="chapter-nav">
+      ${n>1?`<a class="button secondary" href="${lessonHref(n-1)}">← Room ${n-1}</a>`:'<span></span>'}
+      <a class="text-link" href="${base}explore.html">All rooms</a>
+      ${n<9?`<a class="button primary" href="${lessonHref(n+1)}">Room ${n+1} →</a>`:`<a class="button primary" href="${base}music-maker.html">Music Maker →</a>`}
+    </div>`;
+  $$('.mode-tab').forEach(b=>b.addEventListener('click',()=>selectMode(n,b.dataset.mode)));
+  selectMode(n,'discover');
+}
+
+function selectMode(n,mode){
+  $$('.mode-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  const c=chapters[n-1], panel=$('#modePanel'); if(!panel) return;
+  if(mode==='discover') panel.innerHTML=`<p class="eyebrow">Discover</p><h3>${c.title}</h3><p>${c.concept}</p><div class="hear-card"><strong>Book connection</strong><p>${c.story}</p></div><button class="button secondary" id="nextHear" type="button">Next: hear it →</button>`;
+  if(mode==='hear') panel.innerHTML=hearPanel(c);
+  if(mode==='play'){ panel.innerHTML=gamePanel(c); initGame(c); }
+  if(mode==='practise') panel.innerHTML=`<p class="eyebrow">Practise away from the screen</p><h3>Try this together</h3><div class="practice-card"><p>${c.practice}</p></div><p>Keep it short. Stop while it still feels successful, then come back another day.</p><button class="button primary" id="confidenceBtn" type="button">We feel confident with this</button>`;
+  if(mode==='create') panel.innerHTML=`<p class="eyebrow">Create</p><h3>Use the new idea in the Music Maker</h3><p>${createPrompt(c.n)}</p><a class="button primary" href="${base}music-maker.html">Open the Music Maker →</a>`;
+  if($('#nextHear')) $('#nextHear').addEventListener('click',()=>selectMode(n,'hear'));
+  if($('#confidenceBtn')) $('#confidenceBtn').addEventListener('click',()=>{setConfident(n); $('#confidenceBtn').textContent='Marked as confident ✓';});
+}
+
+function hearPanel(c){
+  const specifics={
+    1:['Hear a steady pulse','Play eight even beats.','Play pulse'],2:['Hear long and short','Hear a quaver, crotchet, minim and semibreve.','Play note lengths'],3:['Hear groups','Listen for the stronger first beat and connect groups of 2, 3 and 4 with 2/4, 3/4 and 4/4.','Play groups'],4:['Hear pitch move','Listen to notes climb, then fall.','Play pitch path'],5:['Hear note names','Hear C, D, E, F and G.','Play C to G'],6:['Hear steps and skips','Compare C-D with C-E.','Play examples'],7:['Hear tone and semitone','Compare E-F with C-D.','Play examples'],8:['Hear musical home','Hear a short C-major pattern return home to C.','Play home'],9:['Hear the tonic triad','Hear C-E-G together, then C alone.','Play triad']
+  }[c.n];
+  setTimeout(()=>{ const b=$('#hearBtn'); if(b)b.addEventListener('click',()=>playHearExample(c.n)); },0);
+  return `<p class="eyebrow">Hear</p><h3>${specifics[0]}</h3><p>${specifics[1]}</p><button class="button primary large-action" id="hearBtn" type="button">▶ ${specifics[2]}</button><p class="feedback" id="hearFeedback"></p>`;
+}
+
+let audioCtx;
+function ctx(){ audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function tone(freq,dur=.28,start=0,vol=.12){ const a=ctx(),o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(a.destination);const t=a.currentTime+start;o.start(t);o.stop(t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur); }
+const freqs={C:261.63,'C#':277.18,D:293.66,'D#':311.13,E:329.63,F:349.23,'F#':369.99,G:392,'G#':415.3,A:440,'A#':466.16,B:493.88};
+function playSeq(notes,step=.42,dur=.26){ notes.forEach((n,i)=>{if(n&&freqs[n])tone(freqs[n],dur,i*step);}); }
+function clickBeat(start=0,strong=false){ tone(strong?880:660,.07,start,strong?.18:.10); }
+function playHearExample(n){
+  const fb=$('#hearFeedback'); if(fb) fb.textContent='Listen…';
+  if(n===1) for(let i=0;i<8;i++) clickBeat(i*.5,i===0);
+  if(n===2){tone(freqs.C,.22,0);tone(freqs.C,.44,.5);tone(freqs.C,.88,1.2);tone(freqs.C,1.55,2.35)}
+  if(n===3){[2,3,4].forEach((group,gi)=>{let b=gi*2.7;for(let i=0;i<group;i++)clickBeat(b+i*.48,i===0)})}
+  if(n===4) playSeq(['C','D','E','F','G','F','E','D','C'],.28,.22);
+  if(n===5) playSeq(['C','D','E','F','G'],.42,.32);
+  if(n===6){playSeq(['C','D'],.5,.3);setTimeout(()=>playSeq(['C','E'],.5,.3),1300)}
+  if(n===7){playSeq(['E','F'],.55,.4);setTimeout(()=>playSeq(['C','D'],.55,.4),1500)}
+  if(n===8){playSeq(['C','D','E','F','G','F','E','D','C'],.24,.2)}
+  if(n===9){['C','E','G'].forEach(x=>tone(freqs[x],1.0,0,.09));setTimeout(()=>tone(freqs.C,.8),1300)}
+  setTimeout(()=>{if(fb)fb.textContent='Try saying

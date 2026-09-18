@@ -1,0 +1,52 @@
+const chapters = [
+  {n:1,title:'Pulse / Beat',icon:'🥁',art:'01_G1_CH01_STORY_P01_8.5-square.webp',concept:'The pulse is the steady heartbeat underneath music. It can be fast or slow, but the beats stay even.',story:'Teacher taps a steady beat. Hen and Bea copy it, then learn to keep the same spacing as they move.',practice:'Walk together while counting 1, 2, 3, 4. Swap leaders without changing the speed.',game:'pulse'},
+  {n:2,title:'Note Lengths & Ties',icon:'🌈',art:'03_G1_CH02_STORY_P01_8.5-square.webp',concept:'Notes last for different lengths. A tie joins two notes of the same pitch into one longer sound.',story:'Hen and Bea compare long and short sounds, then watch Teacher join two notes with a curved tie.',practice:'Clap one long sound, then two short ones. Next, hum one sound across two counted beats without restarting.',game:'values'},
+  {n:3,title:'Simple Groupings',icon:'🚶',art:'05_G1_CH03_STORY_P01_8.5-square.webp',concept:'Steady beats can be organised into repeating groups of two, three or four. In the book exercises, those same groups appear as 2/4, 3/4 and 4/4 (common time C).',story:'The garden path turns pulse into patterns: one-two, one-two-three, then one-two-three-four.',practice:'Step around the room in groups of two, three and four. Keep the pulse moving and make beat one a little stronger without making it longer.',game:'grouping'},
+  {n:4,title:'Stave & Treble Clef',icon:'🎼',art:'07_G1_CH04_STORY_P01_8.5-square.webp',concept:'The stave has five lines and four spaces. Notes can sit on either, and their position helps show pitch.',story:'Five glowing lines appear like a ladder. The treble clef becomes the signpost that helps Hen and Bea read them.',practice:'Draw five large lines. Take turns placing a coin on a line or in a space, then move it higher or lower.',game:'stave'},
+  {n:5,title:'Note Names & Accidentals',icon:'♯',art:'09_G1_CH05_STORY_P01_8.5-square.webp',concept:'Notes use the repeating letter names A to G. Sharps, flats and naturals temporarily change notes.',story:'Hen and Bea hunt for note-name cards, then meet three tiny signs that make a big difference.',practice:'Put C, D, E, F and G cards in order. Mix them and rebuild the sequence.',game:'names'},
+  {n:6,title:'Steps & Skips',icon:'🪜',art:'11_G1_CH06_STORY_P01_8.5-square.webp',concept:'A step moves to the neighbouring note. A skip jumps over a neighbour.',story:'Hen and Bea move from note to note: sometimes next door, sometimes jumping over one.',practice:'Say C-D-E-F-G slowly. Then try C-E, D-F and E-G and decide whether each move is a step or a skip.',game:'steps'},
+  {n:7,title:'Tones & Semitones',icon:'🎹',art:'13_G1_CH07_STORY_P01_8.5-square.webp',concept:'A semitone is the smallest neighbouring-key step. A tone is two semitone steps.',story:'Teacher rings very close sounds for a semitone, then sounds farther apart for a tone.',practice:'On a keyboard, find E-F and B-C. Then find C-D and F-G.',game:'tones'},
+  {n:8,title:'Keys & Key Signatures',icon:'🗝️',art:'15_G1_CH08_STORY_P01_8.5-square.webp',concept:'A key is a musical home. A key signature is a signpost near the clef showing the sharps or flats that belong to that key. This chapter is an introduction, not a memory test.',story:'Four magical keys open four musical homes: C major, G major, D major and F major.',practice:'Start with C major: it has no sharps or flats. Then simply notice that G, D and F major use different sharp or flat signs. Exposure is enough at this stage.',game:'keys'},
+  {n:9,title:'The Tonic Triad',icon:'🏠',art:'17_G1_CH09_STORY_P01_8.5-square.webp',concept:'A tonic triad uses scale degrees 1, 3 and 5. In C major that gives C, E and G — the home chord.',story:'Teacher plays C, E and G. Hen and Bea hear how the three notes fit together and sound settled.',practice:'Play or sing C-E-G, then finish on C. Listen for the feeling of arriving home.',game:'triad'}
+];
+
+const defaultState = {status:{},stars:0,lastChapter:1,completedGames:{},maker:['C','D','E','F','G','E','D','C']};
+let state;
+try { state = {...defaultState, ...JSON.parse(localStorage.getItem('henbea-music-house')||'{}')}; } catch { state = {...defaultState}; }
+state.status ||= {}; state.completedGames ||= {}; state.maker ||= [...defaultState.maker];
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const base = document.body.dataset.base || '';
+const page = document.body.dataset.page || '';
+
+function save(){
+  localStorage.setItem('henbea-music-house',JSON.stringify(state));
+  renderSummary(); renderRooms(); renderUnlocks(); renderParent();
+  const ls=$('#lessonStatus'); if(ls && page==='lesson') ls.textContent=statusFor(Number(document.body.dataset.chapter));
+}
+function statusFor(n){ return state.status[n] || (state.completedGames[n] ? 'Practising' : 'Exploring'); }
+function markGame(n){
+  if(!state.completedGames[n]) state.stars=(state.stars||0)+1;
+  state.completedGames[n]=true;
+  if(statusFor(n)==='Exploring') state.status[n]='Practising';
+  save();
+}
+function setConfident(n){ state.status[n]='Confident'; save(); }
+function lessonHref(n){ return `${base}lessons/chapter-${String(n).padStart(2,'0')}.html`; }
+
+function renderSummary(){
+  if(!$('#overallPct')) return;
+  const confident=chapters.filter(c=>statusFor(c.n)==='Confident').length;
+  const explored=chapters.filter(c=>state.completedGames[c.n] || state.status[c.n]).length;
+  $('#overallPct').textContent=Math.round(explored/chapters.length*100)+'%';
+  $('#confidentCount').textContent=confident;
+  $('#starsCount').textContent=state.stars||0;
+}
+
+function roomCard(c){
+  const st=statusFor(c.n); const cls=st.toLowerCase();
+  return `<article class="room-card">
+    <img src="${base}assets/art/${c.art}" alt="Illustration for Chapter ${c.n}: ${c.title}">
+    <div class="room-body">
+      <div class="room-num"><span>Room ${c.n}</span><span class="status-chip ${cls}">${st}</span></div>
+      <h3>${c.icon} ${c.title}</h3><p>${c.concept}</p

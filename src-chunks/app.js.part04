@@ -1,0 +1,31 @@
+ep the spaces even.`;if(score>=75)markGame(n);}});
+}
+function initGrouping(n){ let answer=3; $('#groupPlay').addEventListener('click',()=>{answer=[2,3,4][Math.floor(Math.random()*3)];$('#gameFeedback').textContent='Listen…';for(let r=0;r<2;r++)for(let i=0;i<answer;i++)clickBeat((r*answer+i)*.43,i===0)});$$('.choice[data-group]').forEach(b=>b.addEventListener('click',()=>{const written=answer===4?'4/4 (common time C)':`${answer}/4`;answerSimple(n,+b.dataset.group===answer,`You heard groups of ${answer}. In the book, this grouping is written as ${written}.`)})); }
+function initStave(n){ const positions=[50,62.5,75,87.5,100,112.5,125,137.5,150];let y=positions[Math.floor(Math.random()*positions.length)];$('#staffNote').setAttribute('cy',y);const answer=Number.isInteger((y-50)/25)?'line':'space';$$('.choice[data-stave]').forEach(b=>b.addEventListener('click',()=>answerSimple(n,b.dataset.stave===answer,`The note is in a ${answer}.`))); }
+function initPiano(n){ const keys=[['C',0],['C#',1],['D',0],['D#',1],['E',0],['F',0],['F#',1],['G',0],['G#',1],['A',0],['A#',1],['B',0],['C',0]];let chosen=[];$('#piano').innerHTML=keys.map((k,i)=>`<button class="piano-key ${k[1]?'black':''}" data-note="${k[0]}" data-idx="${i}" type="button">${k[0].replace('#','♯')}</button>`).join('');$$('.piano-key').forEach(b=>b.addEventListener('click',()=>{tone(freqs[b.dataset.note],.35);b.classList.add('active');setTimeout(()=>b.classList.remove('active'),250);chosen.push(+b.dataset.idx);if(chosen.length>2)chosen.shift();if(chosen.length===2){if(chosen[0]===4&&chosen[1]===5){$('#gameFeedback').textContent='Yes — E to F is a semitone because the keys are neighbours.';markGame(n);}else $('#gameFeedback').textContent='Those are not E then F. Try the neighbouring white keys E and F.';}})); }
+function initTriad(n){ let sel=new Set();$$('.triad-note').forEach(b=>b.addEventListener('click',()=>{const x=b.dataset.triad;sel.has(x)?sel.delete(x):sel.add(x);b.classList.toggle('selected',sel.has(x));}));$('#hearTriad').addEventListener('click',()=>[...sel].forEach(x=>tone(freqs[x],.8,0,.08)));$('#checkTriad').addEventListener('click',()=>{const ok=['C','E','G'].every(x=>sel.has(x))&&sel.size===3;answerSimple(n,ok,'C, E and G are scale degrees 1, 3 and 5 in C major.');if(ok)[...sel].forEach(x=>tone(freqs[x],.9,0,.08));}); }
+function createPrompt(n){ return ['Make all eight beats the same note first. Listen for an even pulse.','Make some notes repeat so you can hear long and short patterns.','Think of the eight beats as two groups of four. Make beat 1 and beat 5 feel like new starts.','Make the melody climb, then come back down.','Say each note name as you add it.','Use at least one step and one skip.','Try E-F somewhere in the melody and listen to the close semitone movement.','Keep C feeling like home by beginning or ending there.','Use C, E and G prominently, then finish on C.'][n-1]; }
+
+function renderUnlocks(){
+  if(!$('#unlockList')) return; const completed=n=>!!state.completedGames[n];
+  const tools=[['Steady 8-beat pulse',true],['Named notes C–G',completed(5)||completed(1)],['Steps & skips prompts',completed(6)],['Tone & semitone listening',completed(7)],['Key guidance',completed(8)],['Tonic-triad hint',completed(9)]];
+  $('#unlockList').innerHTML=tools.map(([name,on])=>`<div class="unlock-row ${on?'on':''}"><span class="unlock-icon">${on?'✓':'○'}</span><span>${name}</span></div>`).join('');
+}
+let selectedBeat=0,makerTimer=[];
+function renderComposer(){
+  if(!$('#composerGrid')) return;
+  $('#composerGrid').innerHTML=state.maker.map((note,i)=>`<button class="beat-cell ${i===selectedBeat?'selected':''}" data-beat="${i}" type="button"><span class="beat-n">BEAT ${i+1}</span><span class="note-n">${note||'—'}</span></button>`).join('');
+  $$('.beat-cell').forEach(b=>b.addEventListener('click',()=>{selectedBeat=+b.dataset.beat;renderComposer();}));
+  const notes=['C','D','E','F','G'];$('#composerNotes').innerHTML=notes.map(n=>`<button class="note-button" data-setnote="${n}" type="button">${n}</button>`).join('')+`<button class="note-button rest" data-setnote="" type="button">Rest</button>`;
+  $$('[data-setnote]').forEach(b=>b.addEventListener('click',()=>{state.maker[selectedBeat]=b.dataset.setnote;save();selectedBeat=(selectedBeat+1)%8;renderComposer();}));
+}
+function stopMaker(){ makerTimer.forEach(clearTimeout);makerTimer=[];$$('.beat-cell').forEach(x=>x.classList.remove('current')); }
+function playMaker(){ stopMaker();const bpm=+$('#makerTempo').value,step=60000/bpm;state.maker.forEach((note,i)=>{makerTimer.push(setTimeout(()=>{const cell=document.querySelector(`.beat-cell[data-beat="${i}"]`);$$('.beat-cell').forEach(x=>x.classList.remove('current'));cell?.classList.add('current');if(note)tone(freqs[note],Math.min(.35,step/1000*.7));},i*step));});makerTimer.push(setTimeout(()=>{$$('.beat-cell').forEach(x=>x.classList.remove('current'));$('#makerFeedback').textContent='Nice. Can you change one note and hear what changed?';},8*step)); }
+function initMaker(){
+  if(page!=='maker') return; renderUnlocks();renderComposer();
+  $('#makerTempo')?.addEventListener('input',e=>$('#tempoValue').textContent=e.target.value);
+  $('#playMaker')?.addEventListener('click',playMaker);
+  $('#clearMaker')?.addEventListener('click',()=>{state.maker=Array(8).fill('');save();renderComposer();$('#makerFeedback').textContent='Blank page. Add one note at a time.';});
+}
+function renderParent(){ if(!$('#parentProgress')) return; $('#parentProgress').innerHTML=chapters.map(c=>`<div class="progress-row"><div><strong>Room ${c.n}: ${c.title}</strong><small>${state.completedGames[c.n]?'Game completed':'Game not yet completed'}</small></div><span class="status-chip ${statusFor(c.n).toLowerCase()}">${statusFor(c.n)}</span></div>`).join(''); }
+function initGrownups(){ if(page!=='grownups') return;renderParent();$('#resetProgress')?.addEventListener('click',()=>{if(confirm('Reset all Music House progress on this device?')){state={...defaultState,status

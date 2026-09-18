@@ -1,0 +1,8 @@
+:{},completedGames:{},maker:[...defaultState.maker]};save();renderParent();}}); }
+function initHome(){
+  if(page!=='home') return; renderSummary();renderHomeRooms();
+  $('#continueBtn')?.addEventListener('click',()=>{location.href=lessonHref(state.lastChapter||1);});
+}
+function setActiveNav(){ const key=page==='lesson'?'explore':page; $$('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===key)); }
+
+setActiveNav(); renderRooms(); initHome(); initLesson(); initMaker(); initGrownups();

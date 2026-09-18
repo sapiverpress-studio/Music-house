@@ -1,0 +1,42 @@
+toggle('selected',state.selected.includes(k.dataset.note)));
+      setFeedback(state.selected.length<3?`Choose ${3-state.selected.length} more note${3-state.selected.length===1?'':'s'}.`:'Now press “Check C–E–G”.');
+    }
+  }
+
+  function answerMovement(answer){
+    if(state.mode!=='movement'||!state.pair)return;
+    const ok=answer===state.pair[2];
+    setFeedback(ok?`Correct — ${labels[state.pair[0]]} to ${labels[state.pair[1]]} is a ${answer}.`:`Not quite. Listen again and think: next-door note or jump over one?`,ok);
+    if(ok)setTimeout(newMovement,1100); else {play(state.pair[0],.4,0);play(state.pair[1],.4,.55);}
+  }
+  function answerGap(answer){
+    if(state.mode!=='gap'||!state.pair)return;
+    const ok=answer===state.pair[2];
+    setFeedback(ok?`Correct — that is a ${answer}.`:'Not quite. Listen again: tiny step or bigger whole-tone step?',ok);
+    if(ok)setTimeout(newGap,1100); else {play(state.pair[0],.4,0);play(state.pair[1],.4,.55);}
+  }
+  function checkTriad(){
+    const names=state.selected.map(n=>labels[n]).sort().join(',');
+    const ok=['C4','E4','G4'].every(n=>state.selected.includes(n))&&state.selected.length===3;
+    if(ok){ setFeedback('Yes — C, E and G are 1, 3 and 5: the C-major tonic triad.',true); play('C4',.9,0);play('E4',.9,.05);play('G4',.9,.1); }
+    else setFeedback(`You chose ${names||'no notes yet'}. The home chord needs C, E and G.`);
+  }
+  function replayPair(){ if(state.pair){play(state.pair[0],.4,0);play(state.pair[1],.4,.55);} }
+
+  function setMode(mode){
+    document.querySelectorAll('[data-kmode]').forEach(b=>b.classList.toggle('active',b.dataset.kmode===mode));
+    document.querySelectorAll('[data-mode-panel]').forEach(p=>p.hidden=p.dataset.modePanel!==mode);
+    ({free:modeFree,find:modeFind,movement:modeMovement,gap:modeGap,triad:modeTriad}[mode]||modeFree)();
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    buildKeyboard();
+    document.querySelectorAll('[data-kmode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.kmode)));
+    document.querySelectorAll('[data-movement-answer]').forEach(b=>b.addEventListener('click',()=>answerMovement(b.dataset.movementAnswer)));
+    document.querySelectorAll('[data-gap-answer]').forEach(b=>b.addEventListener('click',()=>answerGap(b.dataset.gapAnswer)));
+    document.querySelectorAll('[data-replay]').forEach(b=>b.addEventListener('click',replayPair));
+    document.querySelector('#checkTriad')?.addEventListener('click',checkTriad);
+    document.querySelector('#clearTriad')?.addEventListener('click',modeTriad);
+    setMode('free');
+  });
+})();

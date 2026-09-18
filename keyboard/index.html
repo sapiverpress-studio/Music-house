@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4ead5"><title>Music House Keyboard — Hen & Bea's Music House</title><link rel="stylesheet" href="../styles.css"></head>
+<body data-page="keyboard" data-base="../"><header class="site-header">
+  <a class="brand" href="../index.html" aria-label="Hen and Bea's Music House home"><span class="brand-mark">♫</span><span>Hen & Bea's Music House</span></a>
+  <nav aria-label="Main navigation"><a data-nav="home" href="../index.html">Home</a><a data-nav="explore" href="../explore.html">Explore</a><a data-nav="keyboard" href="./">Keyboard</a><a data-nav="maker" href="../music-maker.html">Music Maker</a><a data-nav="grownups" href="../grownups.html">Grown-ups</a></nav>
+</header>
+<main>
+<section class="page-hero compact keyboard-hero"><p class="eyebrow">Play the Music House</p><h1>Interactive keyboard</h1><p>Hear the same musical ideas Hen and Bea meet in the book. Start with free play, then try short games for note names, steps and skips, tones and semitones, and the C-major tonic triad.</p></section>
+<section class="section keyboard-section" style="padding-top:26px">
+  <div class="keyboard-card">
+    <div class="keyboard-mode-tabs" role="tablist" aria-label="Keyboard games">
+      <button class="mode-tab" data-kmode="free" type="button">Free play</button>
+      <button class="mode-tab" data-kmode="find" type="button">Find a note</button>
+      <button class="mode-tab" data-kmode="movement" type="button">Step or skip?</button>
+      <button class="mode-tab" data-kmode="gap" type="button">Tone or semitone?</button>
+      <button class="mode-tab" data-kmode="triad" type="button">Build C–E–G</button>
+    </div>
+    <div class="interactive-keyboard" id="interactiveKeyboard" aria-label="One octave interactive piano keyboard"></div>
+    <p class="keyboard-feedback" id="keyboardFeedback" aria-live="polite"></p>
+
+    <div class="keyboard-game-controls">
+      <div data-mode-panel="free"><p><strong>Free play:</strong> tap any key. Try finding C, D, E, F and G from the book.</p></div>
+      <div data-mode-panel="find" hidden><p>Listen with your eyes too: the note name is printed on each key. Find the note the game asks for.</p></div>
+      <div data-mode-panel="movement" hidden><p>Does the second note move next door, or jump over one?</p><div class="inline-actions"><button class="button primary small" data-movement-answer="step" type="button">Step</button><button class="button secondary small" data-movement-answer="skip" type="button">Skip</button><button class="button secondary small" data-replay type="button">↻ Hear again</button></div></div>
+      <div data-mode-panel="gap" hidden><p>A semitone is the smallest keyboard step. A tone is two semitones.</p><div class="inline-actions"><button class="button primary small" data-gap-answer="semitone" type="button">Semitone</button><button class="button secondary small" data-gap-answer="tone" type="button">Tone</button><button class="button secondary small" data-replay type="button">↻ Hear again</button></div></div>
+      <div data-mode-panel="triad" hidden><p>Choose the three notes that make the C-major home chord: scale degrees 1, 3 and 5.</p><div class="inline-actions"><button class="button primary small" id="checkTriad" type="button">Check C–E–G</button><button class="button secondary small" id="clearTriad" type="button">Clear</button></div></div>
+    </div>
+  </div>
+</section>
+<section class="section" style="padding-top:10px"><div class="section-heading"><p class="eyebrow">Book connection</p><h2>Use it after the matching chapter</h2><p>The keyboard is deliberately limited to ideas already introduced in <em>Hen & Bea Invite You to the Music House</em>. It reinforces the book; it does not add a separate piano curriculum.</p></div><div class="intro-card-grid"><article class="intro-card"><span class="big-icon">🔤</span><h3>Chapters 5–6</h3><p>Find note names, then hear steps and skips.</p></article><article class="intro-card"><span class="big-icon">↔</span><h3>Chapter 7</h3><p>Compare the tiny semitone with the larger tone.</p></article><article class="intro-card"><span class="big-icon">🏠</span><h3>Chapters 8–9</h3><p>Hear C as home, then build the C–E–G tonic triad.</p></article></div></section>
+</main>
+<footer><strong>Hen & Bea's Music House</strong><span>Interactive keyboard · Grade 1 companion</span></footer><script src="../app.js"></script><script src="../keyboard.js"></script></body></html>

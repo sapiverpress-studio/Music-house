@@ -1,0 +1,8 @@
+[build]
+  command = "bash build.sh"
+  publish = "dist"
+
+[[redirects]]
+  from = "/keyboard"
+  to = "/keyboard/"
+  status = 301

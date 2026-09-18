@@ -1,0 +1,31 @@
+ what you noticed before playing it again.'},n===2?4300:2600);
+}
+
+function gamePanel(c){
+  const map={
+    pulse:`<p class="eyebrow">Play</p><h3>Keep the Beat</h3><p>Hear four guide beats, then tap eight beats as evenly as you can.</p><button class="button secondary" id="pulseStart" type="button">Start guide beats</button><div class="pulse-dots" id="pulseDots"></div><button class="tap-pad" id="tapPad" type="button">TAP</button><div class="meter"><div id="tapMeter"></div></div><p class="feedback" id="gameFeedback"></p>`,
+    values:`<p class="eyebrow">Play</p><h3>How long does it last?</h3><p>Which note lasts for 4 crotchet beats?</p><div class="choice-row"><button class="choice" data-answer="1">Crotchet</button><button class="choice" data-answer="2">Minim</button><button class="choice" data-answer="4">Semibreve</button></div><p class="feedback" id="gameFeedback"></p>`,
+    grouping:`<p class="eyebrow">Play</p><h3>How are the beats grouped?</h3><p>Listen for the slightly stronger first beat, then match the group to the notation used in the book.</p><button class="button secondary" id="groupPlay" type="button">▶ Play pattern</button><div class="choice-row"><button class="choice" data-group="2">2 beats · 2/4</button><button class="choice" data-group="3">3 beats · 3/4</button><button class="choice" data-group="4">4 beats · 4/4 (C)</button></div><p class="feedback" id="gameFeedback"></p>`,
+    stave:`<p class="eyebrow">Play</p><h3>Line or space?</h3><p>Look at the teal note. Is it sitting on a line or in a space?</p><div class="staff-game"><svg class="staff-svg" viewBox="0 0 640 190" aria-label="Five-line musical stave"><g stroke="#6c5e52" stroke-width="3">${[50,75,100,125,150].map(y=>`<line x1="40" y1="${y}" x2="600" y2="${y}"/>`).join('')}</g><circle id="staffNote" class="staff-note" cx="320" cy="100" r="12"/></svg></div><div class="choice-row"><button class="choice" data-stave="line">Line</button><button class="choice" data-stave="space">Space</button></div><p class="feedback" id="gameFeedback"></p>`,
+    names:`<p class="eyebrow">Play</p><h3>Note-name detective</h3><p>Which letter comes after E?</p><div class="choice-row">${['C','D','E','F','G'].map(x=>`<button class="choice" data-name="${x}">${x}</button>`).join('')}</div><p class="feedback" id="gameFeedback"></p>`,
+    steps:`<p class="eyebrow">Play</p><h3>Step or skip?</h3><p>C → E</p><div class="choice-row"><button class="choice" data-move="step">Step</button><button class="choice" data-move="skip">Skip</button></div><p class="feedback" id="gameFeedback"></p>`,
+    tones:`<p class="eyebrow">Play</p><h3>Keyboard steps</h3><p>Find a semitone: tap E, then its neighbouring white key.</p><div class="piano" id="piano"></div><p class="feedback" id="gameFeedback"></p>`,
+    keys:`<p class="eyebrow">Play</p><h3>Open the musical home</h3><p>Which key has no sharps and no flats?</p><div class="choice-row">${['C major','G major','D major','F major'].map(x=>`<button class="choice" data-key="${x}">${x}</button>`).join('')}</div><p class="feedback" id="gameFeedback"></p>`,
+    triad:`<p class="eyebrow">Play</p><h3>Build the home chord</h3><p>Select the three notes in the C-major tonic triad.</p><div class="triad-notes">${['C','D','E','F','G'].map(x=>`<button class="triad-note" data-triad="${x}">${x}</button>`).join('')}</div><div class="inline-actions" style="margin-top:16px"><button class="button primary" id="checkTriad" type="button">Check chord</button><button class="button secondary" id="hearTriad" type="button">Hear selected</button></div><p class="feedback" id="gameFeedback"></p>`
+  }; return map[c.game];
+}
+function initGame(c){
+  if(c.game==='pulse') initPulseGame(c.n);
+  if(c.game==='values') $$('.choice[data-answer]').forEach(b=>b.addEventListener('click',()=>answerSimple(c.n,+b.dataset.answer===4,'A semibreve lasts for four crotchet beats.')));
+  if(c.game==='grouping') initGrouping(c.n); if(c.game==='stave') initStave(c.n);
+  if(c.game==='names') $$('.choice[data-name]').forEach(b=>b.addEventListener('click',()=>answerSimple(c.n,b.dataset.name==='F','The note names continue E, F, G.')));
+  if(c.game==='steps') $$('.choice[data-move]').forEach(b=>b.addEventListener('click',()=>answerSimple(c.n,b.dataset.move==='skip','C to E jumps over D, so it is a skip.')));
+  if(c.game==='tones') initPiano(c.n);
+  if(c.game==='keys') $$('.choice[data-key]').forEach(b=>b.addEventListener('click',()=>answerSimple(c.n,b.dataset.key==='C major','C major has no sharps and no flats.')));
+  if(c.game==='triad') initTriad(c.n);
+}
+function answerSimple(n,ok,explanation){ const fb=$('#gameFeedback'); if(!fb)return; if(ok){fb.textContent='Correct — '+explanation;markGame(n);}else fb.textContent='Not quite. Try again and use the musical idea above.'; }
+function initPulseGame(n){
+  const dots=$('#pulseDots'); dots.innerHTML=Array.from({length:8},(_,i)=>`<span class="pulse-dot" data-i="${i}"></span>`).join(''); let taps=[],ready=false;
+  $('#pulseStart').addEventListener('click',()=>{taps=[];ready=false;$('#gameFeedback').textContent='Listen to four guide beats…';for(let i=0;i<4;i++){clickBeat(i*.5,i===0);setTimeout(()=>{if(i===3){ready=true;$('#gameFeedback').textContent='Now keep it going — tap eight even beats.'}},i*500+520)}});
+  $('#tapPad').addEventListener('click',()=>{if(!ready){$('#gameFeedback').textContent='Press “Start guide beats” first.';return;}taps.push(performance.now());const i=taps.length-1;document.querySelector(`.pulse-dot[data-i="${i}"]`)?.classList.add('on');clickBeat();if(taps.length===8){ready=false;const intervals=taps.slice(1).map((t,i)=>t-taps[i]);const avg=intervals.reduce((a,b)=>a+b,0)/intervals.length;const mad=intervals.reduce((a,b)=>a+Math.abs(b-avg),0)/intervals.length;const score=Math.max(0,Math.min(100,Math.round(100-(mad/avg)*180)));$('#tapMeter').style.width=score+'%';$('#gameFeedback').textContent=score>=75?`Strong steady pulse — ${score}% consistency.`:`Good try — ${score}% consistency. Try once more and ke
