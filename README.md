@@ -3,7 +3,7 @@
 Source of truth for the Hen & Bea Music House companion website:
 https://henandbeas-musichouse.netlify.app/
 
-The site follows the Grade 1 book curriculum and includes the interactive Music House Keyboard.
+The site follows the book’s chapter sequence and includes the interactive Music House Keyboard.
 
 ## Build
 

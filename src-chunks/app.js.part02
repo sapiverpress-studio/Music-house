@@ -14,7 +14,7 @@ function initLesson(){
   $('#lessonContent').innerHTML=`
     <div class="lesson-hero">
       <div class="lesson-art"><img src="${base}assets/art/${c.art}" alt="Chapter ${n} story illustration"></div>
-      <div class="lesson-intro"><span class="chapter-label">Room ${n} · Grade 1</span><h1 class="lesson-title">${c.icon} ${c.title}</h1><p>${c.story}</p><div class="concept-box">Musical idea: ${c.concept}</div></div>
+      <div class="lesson-intro"><span class="chapter-label">Room ${n} · ${activeBook.label}</span><h1 class="lesson-title">${c.icon} ${c.title}</h1><p>${c.story}</p><div class="concept-box">Musical idea: ${c.concept}</div></div>
     </div>
     <div class="mode-tabs" role="tablist" aria-label="Lesson sections">
       ${['Discover','Hear','Play','Practise','Create'].map((m,i)=>`<button class="mode-tab ${i===0?'active':''}" data-mode="${m.toLowerCase()}" type="button">${m}</button>`).join('')}
@@ -35,7 +35,7 @@ function selectMode(n,mode){
   if(mode==='discover') panel.innerHTML=`<p class="eyebrow">Discover</p><h3>${c.title}</h3><p>${c.concept}</p><div class="hear-card"><strong>Book connection</strong><p>${c.story}</p></div><button class="button secondary" id="nextHear" type="button">Next: hear it →</button>`;
   if(mode==='hear') panel.innerHTML=hearPanel(c);
   if(mode==='play'){ panel.innerHTML=gamePanel(c); initGame(c); }
-  if(mode==='practise') panel.innerHTML=`<p class="eyebrow">Practise away from the screen</p><h3>Try this together</h3><div class="practice-card"><p>${c.practice}</p></div><p>Keep it short. Stop while it still feels successful, then come back another day.</p><button class="button primary" id="confidenceBtn" type="button">We feel confident with this</button>`;
+  if(mode==='practise') panel.innerHTML=`<p class="eyebrow">Practise away from the screen</p><h3>Try this together</h3><div class="practice-card"><p>${c.practice}</p></div><div class="hear-card mastery-card"><strong>When mastered</strong><p>${c.mastery}</p></div><p>Keep it short. Stop while it still feels successful, then come back another day.</p><button class="button primary" id="confidenceBtn" type="button">We feel confident with this</button>`;
   if(mode==='create') panel.innerHTML=`<p class="eyebrow">Create</p><h3>Use the new idea in the Music Maker</h3><p>${createPrompt(c.n)}</p><a class="button primary" href="${base}music-maker.html">Open the Music Maker →</a>`;
   if($('#nextHear')) $('#nextHear').addEventListener('click',()=>selectMode(n,'hear'));
   if($('#confidenceBtn')) $('#confidenceBtn').addEventListener('click',()=>{setConfident(n); $('#confidenceBtn').textContent='Marked as confident ✓';});
@@ -49,10 +49,47 @@ function hearPanel(c){
   return `<p class="eyebrow">Hear</p><h3>${specifics[0]}</h3><p>${specifics[1]}</p><button class="button primary large-action" id="hearBtn" type="button">▶ ${specifics[2]}</button><p class="feedback" id="hearFeedback"></p>`;
 }
 
-let audioCtx;
-function ctx(){ audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
-function tone(freq,dur=.28,start=0,vol=.12){ const a=ctx(),o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(a.destination);const t=a.currentTime+start;o.start(t);o.stop(t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur); }
-const freqs={C:261.63,'C#':277.18,D:293.66,'D#':311.13,E:329.63,F:349.23,'F#':369.99,G:392,'G#':415.3,A:440,'A#':466.16,B:493.88};
+const freqs={C:261.63,'C#':277.18,D:293.66,'D#':311.13,E:329.63,F:349.23,'F#':369.99,G:392,'G#':415.3,A:440,'A#':466.16,B:493.88,C5:523.25};
+let audioCtx, masterGain, limiter;
+const activeHeld = new Map();
+function ctx(){
+  if(!audioCtx){
+    const Audio=window.AudioContext||window.webkitAudioContext; if(!Audio)return null;
+    audioCtx=new Audio(); masterGain=audioCtx.createGain(); limiter=audioCtx.createDynamicsCompressor();
+    limiter.threshold.value=-12; limiter.knee.value=18; limiter.ratio.value=6; limiter.attack.value=.004; limiter.release.value=.22;
+    masterGain.gain.value=Number(localStorage.getItem('music-house-volume'))||1.35;
+    masterGain.connect(limiter); limiter.connect(audioCtx.destination);
+  }
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function makePartials(freq,when,vol,held=false){
+  const a=ctx(); if(!a)return null;
+  const parts=[[1,1],[2,.32],[3,.12]], nodes=[];
+  for(const [multiple,level] of parts){
+    const osc=a.createOscillator(),gain=a.createGain(); osc.type='sine'; osc.frequency.value=freq*multiple;
+    gain.gain.setValueAtTime(.0001,when); gain.gain.exponentialRampToValueAtTime(Math.max(.0001,vol*level),when+.018);
+    osc.connect(gain); gain.connect(masterGain); osc.start(when); nodes.push({osc,gain});
+  }
+  return {nodes,vol,when,held};
+}
+function releaseVoice(voice,when=ctx()?.currentTime){
+  if(!voice||!when)return;
+  const end=when+.16;
+  voice.nodes.forEach(({osc,gain})=>{gain.gain.cancelScheduledValues(when);gain.gain.setTargetAtTime(.0001,when,.045);osc.stop(end+.04);});
+}
+function tone(freq,dur=.28,start=0,vol=.12){
+  const a=ctx(); if(!a)return; const when=a.currentTime+start,voice=makePartials(freq,when,vol);
+  if(voice) releaseVoice(voice,when+Math.max(.05,dur-.11));
+}
+function startHeld(freq,id,vol=.24){
+  const a=ctx(); if(!a)return;
+  if(activeHeld.has(id)) releaseVoice(activeHeld.get(id));
+  const voice=makePartials(freq,a.currentTime,vol,true); if(voice)activeHeld.set(id,voice);
+}
+function stopHeld(id){const voice=activeHeld.get(id); if(!voice)return;activeHeld.delete(id);releaseVoice(voice);}
+function setMusicVolume(value){const a=ctx(); if(!a)return; const level=Math.max(.55,Math.min(1.8,Number(value)||1.35));masterGain.gain.setTargetAtTime(level,a.currentTime,.03);localStorage.setItem('music-house-volume',String(level));}
+window.MusicHouseAudio={start(note,id,vol){const key=note==='C5'?'C5':String(note).replace(/[45]$/,'');if(freqs[key])startHeld(freqs[key],id,vol);},stop:stopHeld,setVolume:setMusicVolume,play(note,vol=.12,dur=.8,delay=0){const key=note==='C5'?'C5':String(note).replace(/[45]$/,'');if(freqs[key])tone(freqs[key],dur,delay,vol);}};
 function playSeq(notes,step=.42,dur=.26){ notes.forEach((n,i)=>{if(n&&freqs[n])tone(freqs[n],dur,i*step);}); }
 function clickBeat(start=0,strong=false){ tone(strong?880:660,.07,start,strong?.18:.10); }
 function playHearExample(n){
