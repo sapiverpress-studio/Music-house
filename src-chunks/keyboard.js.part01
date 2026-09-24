@@ -1,78 +1,66 @@
 (() => {
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  let ctx;
   const frequencies = {
-    'C4':261.63,'C#4':277.18,'D4':293.66,'D#4':311.13,'E4':329.63,
-    'F4':349.23,'F#4':369.99,'G4':392.00,'G#4':415.30,'A4':440.00,
-    'A#4':466.16,'B4':493.88,'C5':523.25
+    C4:261.63,'C#4':277.18,D4:293.66,'D#4':311.13,E4:329.63,F4:349.23,'F#4':369.99,
+    G4:392.00,'G#4':415.30,A4:440.00,'A#4':466.16,B4:493.88,C5:523.25
   };
   const labels = {'C4':'C','C#4':'C♯','D4':'D','D#4':'D♯','E4':'E','F4':'F','F#4':'F♯','G4':'G','G#4':'G♯','A4':'A','A#4':'A♯','B4':'B','C5':'C'};
   const natural = ['C4','D4','E4','F4','G4','A4','B4','C5'];
-  const chromatic = Object.keys(frequencies);
-  const state = { mode:'free', target:null, pair:null, selected:[] };
+  const state = {mode:'free',target:null,pair:null,selected:[]};
+  const heldPointers = new Map(), sustained = new Set();
+  let noteSerial=0;
+  const audio = window.MusicHouseAudio;
 
-  function audio(){ if(!ctx) ctx = new AudioCtx(); if(ctx.state === 'suspended') ctx.resume(); return ctx; }
-  function play(note, duration=.55, delay=0){
-    const a = audio();
-    const o = a.createOscillator(); const g = a.createGain();
-    o.type = 'sine'; o.frequency.value = frequencies[note];
-    g.gain.setValueAtTime(0.0001,a.currentTime+delay);
-    g.gain.exponentialRampToValueAtTime(.18,a.currentTime+delay+.015);
-    g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+delay+duration);
-    o.connect(g); g.connect(a.destination); o.start(a.currentTime+delay); o.stop(a.currentTime+delay+duration+.03);
+  function setFeedback(text,good=false){const el=document.querySelector('#keyboardFeedback');if(el){el.textContent=text;el.classList.toggle('good',good);}}
+  function clearActive(){document.querySelectorAll('.music-key').forEach(k=>k.classList.remove('target','selected'));}
+  function keyEl(note){return document.querySelector(`[data-note="${note}"]`);}
+  function cue(note,duration=.4,delay=0){audio?.play(note,.16,duration,delay);}
+  function stopAll(){
+    heldPointers.forEach(({id})=>audio?.stop(id));heldPointers.clear();
+    sustained.forEach(id=>audio?.stop(id));sustained.clear();
+    document.querySelectorAll('.music-key').forEach(k=>k.classList.remove('pressed'));
   }
-  function setFeedback(text, good=false){ const el=document.querySelector('#keyboardFeedback'); if(el){el.textContent=text; el.classList.toggle('good',good);} }
-  function clearActive(){ document.querySelectorAll('.music-key').forEach(k=>k.classList.remove('target','selected')); }
-  function keyEl(note){ return document.querySelector(`[data-note="${note}"]`); }
-  function flash(note){ const el=keyEl(note); if(!el)return; el.classList.add('pressed'); setTimeout(()=>el.classList.remove('pressed'),220); }
-  function playAndFlash(note){ play(note); flash(note); }
-
   function buildKeyboard(){
-    const shell=document.querySelector('#interactiveKeyboard'); if(!shell)return;
-    shell.innerHTML='';
-    const white=document.createElement('div'); white.className='keyboard-whites';
-    natural.forEach((note,i)=>{
-      const b=document.createElement('button'); b.type='button'; b.className='music-key white-key'; b.dataset.note=note;
-      b.innerHTML=`<span>${labels[note]}</span>`; b.setAttribute('aria-label',`Play ${labels[note]}`);
-      white.appendChild(b);
-    });
+    const shell=document.querySelector('#interactiveKeyboard');if(!shell)return;shell.innerHTML='';
+    const white=document.createElement('div');white.className='keyboard-whites';
+    natural.forEach(note=>{const b=document.createElement('button');b.type='button';b.className='music-key white-key';b.dataset.note=note;b.innerHTML=`<span>${labels[note]}</span>`;b.setAttribute('aria-label',`Play ${labels[note]}`);white.appendChild(b);});
     shell.appendChild(white);
-    const blackPositions = {'C#4':0,'D#4':1,'F#4':3,'G#4':4,'A#4':5};
-    Object.entries(blackPositions).forEach(([note,pos])=>{
-      const b=document.createElement('button'); b.type='button'; b.className='music-key black-key'; b.dataset.note=note;
-      b.innerHTML=`<span>${labels[note]}</span>`; b.setAttribute('aria-label',`Play ${labels[note]}`);
-      b.style.left=`calc(${(pos+1)*12.5}% - 23px)`;
-      shell.appendChild(b);
+    const blackPositions={'C#4':0,'D#4':1,'F#4':3,'G#4':4,'A#4':5};
+    Object.entries(blackPositions).forEach(([note,pos])=>{const b=document.createElement('button');b.type='button';b.className='music-key black-key';b.dataset.note=note;b.innerHTML=`<span>${labels[note]}</span>`;b.setAttribute('aria-label',`Play ${labels[note]}`);b.style.left=`calc(${(pos+1)*12.5}% - 23px)`;shell.appendChild(b);});
+    shell.querySelectorAll('.music-key').forEach(b=>{
+      b.addEventListener('pointerdown',event=>{
+        event.preventDefault();if(heldPointers.has(event.pointerId))return;
+        b.setPointerCapture?.(event.pointerId);const id=`keyboard-${event.pointerId}-${++noteSerial}`;
+        heldPointers.set(event.pointerId,{id,note:b.dataset.note});b.classList.add('pressed');
+        audio?.start(b.dataset.note,id,.28);handleKey(b.dataset.note,true);
+      });
+      const finish=event=>{
+        const held=heldPointers.get(event.pointerId);if(!held)return;heldPointers.delete(event.pointerId);b.classList.remove('pressed');
+        if(document.querySelector('#sustainToggle')?.checked)sustained.add(held.id);else audio?.stop(held.id);
+      };
+      b.addEventListener('pointerup',finish);b.addEventListener('pointercancel',finish);b.addEventListener('lostpointercapture',finish);
+      b.addEventListener('click',event=>{if(event.detail===0){cue(b.dataset.note,.55);handleKey(b.dataset.note,true);}});
     });
-    shell.querySelectorAll('.music-key').forEach(b=>b.addEventListener('click',()=>handleKey(b.dataset.note)));
   }
 
-  function modeFree(){ state.mode='free'; state.target=null; state.pair=null; state.selected=[]; clearActive(); setFeedback('Free play: tap any key and listen.'); }
-  function modeFind(){ state.mode='find'; state.selected=[]; clearActive(); newFind(); }
-  function newFind(){ state.target=natural[Math.floor(Math.random()*7)]; setFeedback(`Find ${labels[state.target]}. Tap the matching key.`); }
-  function modeMovement(){ state.mode='movement'; state.selected=[]; clearActive(); newMovement(); }
-  function newMovement(){
-    const choices=[['C4','D4','step'],['D4','E4','step'],['E4','F4','step'],['F4','G4','step'],['C4','E4','skip'],['D4','F4','skip'],['E4','G4','skip']];
-    state.pair=choices[Math.floor(Math.random()*choices.length)];
-    play(state.pair[0],.4,0); play(state.pair[1],.4,.55);
-    setFeedback('Listen: is that a step or a skip?');
-  }
-  function modeGap(){ state.mode='gap'; state.selected=[]; clearActive(); newGap(); }
-  function newGap(){
-    const choices=[['E4','F4','semitone'],['B4','C5','semitone'],['C4','C#4','semitone'],['F4','F#4','semitone'],['C4','D4','tone'],['D4','E4','tone'],['F4','G4','tone'],['G4','A4','tone']];
-    state.pair=choices[Math.floor(Math.random()*choices.length)];
-    play(state.pair[0],.4,0); play(state.pair[1],.4,.55);
-    setFeedback('Listen: is that gap a tone or a semitone?');
-  }
-  function modeTriad(){ state.mode='triad'; state.selected=[]; clearActive(); setFeedback('Build the C-major tonic triad. Choose exactly three notes.'); }
-
-  function handleKey(note){
-    playAndFlash(note);
+  function modeFree(){stopAll();state.mode='free';state.target=null;state.pair=null;state.selected=[];clearActive();setFeedback('Free play: press and hold any key to sustain its sound.');}
+  function modeFind(){stopAll();state.mode='find';state.selected=[];clearActive();newFind();}
+  function newFind(){state.target=natural[Math.floor(Math.random()*7)];setFeedback(`Find ${labels[state.target]}. Press its key.`);}
+  function modeMovement(){stopAll();state.mode='movement';state.selected=[];clearActive();newMovement();}
+  function newMovement(){const choices=[['C4','D4','step'],['D4','E4','step'],['E4','F4','step'],['F4','G4','step'],['C4','E4','skip'],['D4','F4','skip'],['E4','G4','skip']];state.pair=choices[Math.floor(Math.random()*choices.length)];cue(state.pair[0],.4,0);cue(state.pair[1],.4,.55);setFeedback('Listen: is that a step or a skip?');}
+  function modeGap(){stopAll();state.mode='gap';state.selected=[];clearActive();newGap();}
+  function newGap(){const choices=[['E4','F4','semitone'],['B4','C5','semitone'],['C4','C#4','semitone'],['F4','F#4','semitone'],['C4','D4','tone'],['D4','E4','tone'],['F4','G4','tone'],['G4','A4','tone']];state.pair=choices[Math.floor(Math.random()*choices.length)];cue(state.pair[0],.4,0);cue(state.pair[1],.4,.55);setFeedback('Listen: is that gap a tone or a semitone?');}
+  function modeTriad(){stopAll();state.mode='triad';state.selected=[];clearActive();setFeedback('Build the C-major tonic triad. Choose exactly three notes.');}
+  function handleKey(note,alreadyPlaying=false){
+    if(!alreadyPlaying)cue(note,.55);
     if(state.mode==='find'){
-      if(note===state.target){ setFeedback(`Yes — ${labels[note]}!`,true); setTimeout(newFind,900); }
+      if(note===state.target){setFeedback(`Yes — ${labels[note]}!`,true);setTimeout(newFind,900);}
       else setFeedback(`That is ${labels[note]}. Try again: find ${labels[state.target]}.`);
     }
     if(state.mode==='triad'){
-      if(!natural.includes(note) || note==='C5') return;
-      const i=state.selected.indexOf(note); if(i>=0) state.selected.splice(i,1); else if(state.selected.length<3) state.selected.push(note);
-      document.querySelectorAll('.music-key').forEach(k=>k.classList.
+      if(!natural.includes(note)||note==='C5')return;
+      const i=state.selected.indexOf(note);if(i>=0)state.selected.splice(i,1);else if(state.selected.length<3)state.selected.push(note);
+      document.querySelectorAll('.music-key').forEach(k=>k.classList.toggle('selected',state.selected.includes(k.dataset.note)));
+      setFeedback(state.selected.length<3?`Choose ${3-state.selected.length} more note${state.selected.length===2?'':'s'}.`:'Now press “Check C–E–G”.');
+    }
+  }
+  function answerMovement(answer){if(state.mode!=='movement'||!state.pair)return;const ok=answer===state.pair[2];setFeedback(ok?`Correct — ${labels[state.pair[0]]} to ${labels[state.pair[1]]} is a ${answer}.`:'Not quite. Listen again and think: next-door note or jump over one?',ok);if(ok)setTimeout(newMovement,1100);else{cue(state.pair[0],.4,0);cue(state.pair[1],.4,.55);}}
