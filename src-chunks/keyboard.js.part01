@@ -6,7 +6,7 @@
     ['C#5','C5'],['D#5','D5'],['F#5','F5'],['G#5','G5'],['A#5','A5']
   ];
   const state = {mode:'free',target:null,pair:null,selected:[]};
-  const heldPointers = new Map(), sustained = new Set();
+  const heldPointers = new Map(), activePointers = new Set(), sustained = new Set();
   const rangeMedia = window.matchMedia?.('(orientation: landscape), (min-width: 900px)');
   let noteSerial=0, renderedExpanded=null;
 
@@ -58,8 +58,32 @@
   function cue(note,duration=.4,delay=0){audio.play(note,.16,duration,delay);}
   function stopAll(){
     heldPointers.forEach(({id})=>audio.stop(id));heldPointers.clear();
+    activePointers.clear();
     sustained.forEach(id=>audio.stop(id));sustained.clear();
     document.querySelectorAll('.music-key').forEach(k=>k.classList.remove('pressed'));
+  }
+  function showPressed(note){
+    document.querySelectorAll('.music-key').forEach(key=>{
+      if(key.dataset.note===note)key.classList.toggle('pressed',[...heldPointers.values()].some(held=>held.note===note));
+    });
+  }
+  function releaseHeld(pointerId,allowSustain=true){
+    const held=heldPointers.get(pointerId);if(!held)return;
+    heldPointers.delete(pointerId);showPressed(held.note);
+    if(allowSustain&&document.querySelector('#sustainToggle')?.checked)sustained.add(held.id);
+    else audio.stop(held.id);
+  }
+  function pressKey(pointerId,key){
+    const note=key.dataset.note;
+    if(heldPointers.get(pointerId)?.note===note)return;
+    releaseHeld(pointerId);
+    const id=`keyboard-${pointerId}-${++noteSerial}`;
+    heldPointers.set(pointerId,{id,note});showPressed(note);
+    audio.start(note,id,.28);handleKey(note,true);
+  }
+  function keyAtPoint(shell,event){
+    const key=document.elementFromPoint(event.clientX,event.clientY)?.closest('.music-key');
+    return key&&shell.contains(key)?key:null;
   }
   function shouldExpand(){return Boolean(rangeMedia?.matches);}
   function buildKeyboard(){
@@ -88,18 +112,54 @@
 
     shell.querySelectorAll('.music-key').forEach(b=>{
       if(state.selected.includes(b.dataset.note))b.classList.add('selected');
-      b.addEventListener('pointerdown',event=>{
-        event.preventDefault();if(heldPointers.has(event.pointerId))return;
-        b.setPointerCapture?.(event.pointerId);const id=`keyboard-${event.pointerId}-${++noteSerial}`;
-        heldPointers.set(event.pointerId,{id,note:b.dataset.note});b.classList.add('pressed');
-        audio.start(b.dataset.note,id,.28);handleKey(b.dataset.note,true);
-      });
-      const finish=event=>{
-        const held=heldPointers.get(event.pointerId);if(!held)return;heldPointers.delete(event.pointerId);b.classList.remove('pressed');
-        if(document.querySelector('#sustainToggle')?.checked)sustained.add(held.id);else audio.stop(held.id);
-      };
-      b.addEventListener('pointerup',finish);b.addEventListener('pointercancel',finish);b.addEventListener('lostpointercapture',finish);
-      b.addEventListener('click',event=>{if(event.detail===0){cue(b.dataset.note,.55);handleKey(b.dataset.note,true);}});
+    });
+  }
+
+  function setupPointerPlaying(){
+    const shell=document.querySelector('#interactiveKeyboard');if(!shell)return;
+    shell.addEventListener('pointerdown',event=>{
+      const key=keyAtPoint(shell,event);if(!key)return;
+      event.preventDefault();activePointers.add(event.pointerId);shell.setPointerCapture?.(event.pointerId);
+      pressKey(event.pointerId,key);
+    });
+    shell.addEventListener('pointermove',event=>{
+      if(!activePointers.has(event.pointerId))return;
+      event.preventDefault();const key=keyAtPoint(shell,event);
+      if(key)pressKey(event.pointerId,key);else releaseHeld(event.pointerId);
+    });
+    const finish=(event,allowSustain)=>{activePointers.delete(event.pointerId);releaseHeld(event.pointerId,allowSustain);};
+    shell.addEventListener('pointerup',event=>finish(event,true));
+    shell.addEventListener('pointercancel',event=>finish(event,false));
+    shell.addEventListener('lostpointercapture',event=>finish(event,false));
+    shell.addEventListener('click',event=>{
+      const key=event.target.closest('.music-key');
+      if(key&&event.detail===0){cue(key.dataset.note,.55);handleKey(key.dataset.note,true);}
+    });
+  }
+
+  function setupFullscreen(){
+    const consoleEl=document.querySelector('.piano-console'),button=document.querySelector('#pianoFullscreen');
+    if(!consoleEl||!button)return;
+    const sync=active=>{
+      consoleEl.classList.toggle('immersive',active);
+      document.body.classList.toggle('keyboard-immersive',active);
+      button.setAttribute('aria-pressed',String(active));
+      button.textContent=active?'Exit full screen':'Full screen';
+    };
+    button.addEventListener('click',async()=>{
+      if(consoleEl.classList.contains('immersive')){
+        if(document.fullscreenElement===consoleEl){try{await document.exitFullscreen();}catch{}}
+        sync(false);return;
+      }
+      sync(true);
+      if(consoleEl.requestFullscreen){try{await consoleEl.requestFullscreen();}catch{/* Screen-filling layout remains available. */}}
+    });
+    document.addEventListener('fullscreenchange',()=>{
+      if(document.fullscreenElement===consoleEl)sync(true);
+      else if(consoleEl.classList.contains('immersive'))sync(false);
+    });
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&consoleEl.classList.contains('immersive')&&!document.fullscreenElement)sync(false);
     });
   }
 
@@ -136,7 +196,7 @@
     pedal?.addEventListener('change',()=>{if(!pedal.checked){sustained.forEach(id=>audio.stop(id));sustained.clear();}});
   }
   document.addEventListener('DOMContentLoaded',()=>{
-    buildKeyboard();setupSoundControls();
+    buildKeyboard();setupPointerPlaying();setupSoundControls();setupFullscreen();
     document.querySelectorAll('[data-kmode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.kmode)));
     document.querySelectorAll('[data-movement-answer]').forEach(b=>b.addEventListener('click',()=>answerMovement(b.dataset.movementAnswer)));
     document.querySelectorAll('[data-gap-answer]').forEach(b=>b.addEventListener('click',()=>answerGap(b.dataset.gapAnswer)));
@@ -144,6 +204,7 @@
     document.querySelector('#checkTriad')?.addEventListener('click',checkTriad);
     document.querySelector('#clearTriad')?.addEventListener('click',modeTriad);
     if(rangeMedia?.addEventListener)rangeMedia.addEventListener('change',buildKeyboard);else rangeMedia?.addListener?.(buildKeyboard);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAll();});
     setMode('free');
   });
 })();

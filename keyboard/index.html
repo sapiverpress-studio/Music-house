@@ -16,7 +16,7 @@
     </div>
 
     <div class="piano-console">
-      <div class="piano-console-head"><span class="piano-wordmark">Hen & Bea's Music House</span><span class="piano-model">Practice Piano</span></div>
+      <div class="piano-console-head"><span class="piano-wordmark">Hen & Bea's Music House</span><span class="piano-model">Practice Piano</span><button class="piano-fullscreen-button" id="pianoFullscreen" type="button" aria-pressed="false">Full screen</button></div>
       <div class="keyboard-controls" aria-label="Keyboard sound controls">
         <label class="volume-control" for="keyboardVolume"><strong>Keyboard volume</strong><input id="keyboardVolume" type="range" min="55" max="180" step="5" value="135"><span id="keyboardVolumeValue">135%</span></label>
         <label class="sustain-control"><input id="sustainToggle" type="checkbox"><span><strong>Sustain pedal</strong><small>Let go of a key and keep its sound ringing. Switch off to release.</small></span></label>
@@ -26,10 +26,10 @@
         <div class="piano-felt" aria-hidden="true"></div>
         <div class="interactive-keyboard" id="interactiveKeyboard" aria-label="Responsive touch piano keyboard"></div>
       </div>
+      <p class="keyboard-feedback" id="keyboardFeedback" aria-live="polite"></p>
     </div>
 
-    <p class="keyboard-help">Press and hold a key to keep its sound going. Lift your finger to release it. Press more than one key at once to hear notes together. On a phone, turn your device sideways for the full two-octave keyboard.</p>
-    <p class="keyboard-feedback" id="keyboardFeedback" aria-live="polite"></p>
+    <p class="keyboard-help">Press and hold a key to keep its sound going, or slide across keys to play each note. Use more than one finger for chords. Turn your phone sideways for two octaves and tap Full screen for more room.</p>
 
     <div class="keyboard-game-controls">
       <div data-mode-panel="free"><p><strong>Free play:</strong> hold a key for a longer sound; hold two or more together for a chord. Try finding C, D, E, F and G from the book.</p></div>
