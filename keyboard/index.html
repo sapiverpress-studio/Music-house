@@ -14,13 +14,21 @@
       <button class="mode-tab" data-kmode="gap" type="button">Tone or semitone?</button>
       <button class="mode-tab" data-kmode="triad" type="button">Build C–E–G</button>
     </div>
-    <div class="keyboard-controls" aria-label="Keyboard sound controls">
-      <label class="volume-control" for="keyboardVolume"><strong>Keyboard volume</strong><input id="keyboardVolume" type="range" min="55" max="180" step="5" value="135"><span id="keyboardVolumeValue">135%</span></label>
-      <label class="sustain-control"><input id="sustainToggle" type="checkbox"><span><strong>Sustain pedal</strong><small>Let go of a key and keep its sound ringing. Switch off to release.</small></span></label>
+
+    <div class="piano-console">
+      <div class="piano-console-head"><span class="piano-wordmark">Hen & Bea's Music House</span><span class="piano-model">Practice Piano</span></div>
+      <div class="keyboard-controls" aria-label="Keyboard sound controls">
+        <label class="volume-control" for="keyboardVolume"><strong>Keyboard volume</strong><input id="keyboardVolume" type="range" min="55" max="180" step="5" value="135"><span id="keyboardVolumeValue">135%</span></label>
+        <label class="sustain-control"><input id="sustainToggle" type="checkbox"><span><strong>Sustain pedal</strong><small>Let go of a key and keep its sound ringing. Switch off to release.</small></span></label>
+      </div>
+      <p class="volume-note">The slider raises the website's output. Your phone's media volume still sets the final maximum.</p>
+      <div class="piano-keybed">
+        <div class="piano-felt" aria-hidden="true"></div>
+        <div class="interactive-keyboard" id="interactiveKeyboard" aria-label="Responsive touch piano keyboard"></div>
+      </div>
     </div>
-    <p class="volume-note">The slider raises the website's output. Your phone's media volume still sets the final maximum.</p>
-    <p class="keyboard-help">Press and hold a key to keep its sound going. Lift your finger to release it. Press more than one key at once to hear notes together.</p>
-    <div class="interactive-keyboard" id="interactiveKeyboard" aria-label="One octave touch piano keyboard"></div>
+
+    <p class="keyboard-help">Press and hold a key to keep its sound going. Lift your finger to release it. Press more than one key at once to hear notes together. On a phone, turn your device sideways for the full two-octave keyboard.</p>
     <p class="keyboard-feedback" id="keyboardFeedback" aria-live="polite"></p>
 
     <div class="keyboard-game-controls">
